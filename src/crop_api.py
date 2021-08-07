@@ -115,8 +115,12 @@ def is_symmetric(
     if image.shape[-1] == 4:
         # Image is RGBA
         mode = "RGBA"
+    try:
+        pil_image = Image.fromarray(image, mode=mode)
+    except TypeError:
+        pil_image = Image.fromarray((image * 255).astype(np.uint8))
     imageResized = np.asarray(
-        Image.fromarray(image, mode=mode).resize((size, size), Image.ANTIALIAS)
+        pil_image.resize((size, size), Image.ANTIALIAS)
     ).astype(int)
     imageResizedFlipped = np.flip(imageResized, 1)
 
@@ -147,11 +151,15 @@ class ImageSaliencyModel(object):
         self.cmd_template = (
             f'{self.crop_binary_path} {self.crop_model_path} "{{}}" show_all_points'
         )
+        self.all_results = []
 
     #         if self.aspectRatios:
     #             self.cmd_template = self.cmd_template + " ".join(
     #                 str(ar) for ar in self.aspectRatios
     #             )
+
+    def get_all_results(self):
+        return self.all_results
 
     def get_output(self, img_path, aspectRatios=None):
         cmd = self.cmd_template.format(img_path.absolute())
@@ -188,6 +196,26 @@ class ImageSaliencyModel(object):
             ax.axvline(x=i, lw=1, color="0.1")
         ax.axhline(y=max(sz), lw=3, color="k")
         return ax
+
+    def plot_saliency_scores_for_y(self, img, all_salient_points, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
+        # Sort points based on Y axis
+        sx, sy, sz = zip(*sorted(all_salient_points, key=lambda x: (x[1], x[0])))
+
+        y2maxz = {}
+        for _, y, z in zip(sx, sy, sz):
+            if y in y2maxz:
+                y2maxz[y] = max(y2maxz[y], z)
+            else:
+                y2maxz[y] = z
+        my = list(y2maxz.keys())
+        mz = list(y2maxz.values())
+
+        ax.plot(my, mz, linestyle="-", color="r", marker=None, lw=1)
+        ax.scatter(my, mz, c=mz, s=100, alpha=0.8, marker="s", cmap="Reds")
+        ax.axhline(y=max(sz), lw=3, color="k")
+        return ax, my, mz
 
     def plot_crop_area(
         self,
@@ -246,11 +274,13 @@ class ImageSaliencyModel(object):
         sample=False,
         col_wrap=None,
         add_saliency_line=True,
+        saliency_line_y=False,
     ):
         img = mpimg.imread(img_path)
         img_h, img_w = img.shape[:2]
 
         print(aspectRatios, img_w, img_h)
+        results = {'img_h': img_h, 'img_w': img_w}
 
         if aspectRatios is None:
             aspectRatios = self.aspectRatios
@@ -263,7 +293,7 @@ class ImageSaliencyModel(object):
         salient_x, salient_y, = output[
             "salient_point"
         ][0]
-        # img_w, img_h = img.shape[:2]
+        results.update(output)
 
         logging.info(f"{(img_w, img_h)}, {aspectRatios}, {(salient_x, salient_y)}")
 
@@ -344,8 +374,14 @@ class ImageSaliencyModel(object):
                     ax.set_title(f"Saliency Rank: {t+1} | {ax.get_title()}")
         if add_saliency_line:
             ax = fig.add_subplot(gs[-1, :])
-            self.plot_saliency_scores_for_index(img, all_salient_points, ax=ax)
+            if saliency_line_y:
+                _, my, mz = self.plot_saliency_scores_for_y(img, all_salient_points, ax=ax)
+                results['my'] = my
+                results['mz'] = mz
+            else:
+                self.plot_saliency_scores_for_index(img, all_salient_points, ax=ax)
         fig.tight_layout()
+        self.all_results.append(results)
 
     def plot_img_crops_using_img(
         self,

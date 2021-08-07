@@ -1,78 +1,58 @@
-# Image Crop Analysis
+# Manga Image Crop Analysis
 
-[![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/twitter-research/image-crop-analysis) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/twitter-research/image-crop-analysis/HEAD)
+## Introduction
 
-![How does a saliency algorithm work](https://cdn.cms-twdigitalassets.com/content/dam/blog-twitter/engineering/en_us/insights/2021/imagecropping/newimagecropanimations.gif)
+Image cropping algorithms should not cause spoilers.
+Specifically, they should not reveal the ending and punch line of stories.
+If they cause spoilers, they have negative impacts on entertainment, culture, and economy.
 
-This is a repo for the code used for reproducing our [Image Crop Analysis paper](https://arxiv.org/abs/2105.08667) as shared on [our blog post](https://blog.twitter.com/engineering/en_us/topics/insights/2021/sharing-learnings-about-our-image-cropping-algorithm.html). 
+We analyze four-frame cartoons and reveal that Twitter's cropping algorithm is biased towards spoilers.
+It is inappropriate to crop salient regions to create thumbnails.
+We need to develop algorithms that can correctly understand the contents of images and stories.
 
-If you plan to use this code please cite our paper as follows:
+## Instructions
 
-```
-@ARTICLE{TwitterImageCrop2021,
-       author = {{Yee}, Kyra and {Tantipongpipat}, Uthaipon and {Mishra}, Shubhanshu},
-        title = "{Image Cropping on Twitter: Fairness Metrics, their Limitations, and the Importance of Representation, Design, and Agency}",
-      journal = {arXiv e-prints},
-     keywords = {Computer Science - Computers and Society, Computer Science - Computer Vision and Pattern Recognition, Computer Science - Human-Computer Interaction, Computer Science - Machine Learning},
-         year = 2021,
-        month = may,
-          eid = {arXiv:2105.08667},
-        pages = {arXiv:2105.08667},
-archivePrefix = {arXiv},
-       eprint = {2105.08667},
- primaryClass = {cs.CY},
-}
-```
-
-![Analysis of demographic bias of the image cropping algorithm](./notebooks/wiki_no_scaling_intersect_n=10000.jpg)
-
-
-# Instructions
-
-- Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/products/individual) and then follow these steps:
-  * create a conda environment using `conda env create -f environment.yml`
-  * activate the environment using `conda activate image-crop-analysis`
-- Put a dummy jpeg image at `data/dummy.jpeg`
-- Put any additional images with `*.jpeg` extension in DATA_DIR, which is `./data`
-- If you just want to investigate how the model predicts the saliency map then you can use the notebook [notebooks/Image Annotation Dash.ipynb](notebooks/Image%20Annotation%20Dash.ipynb)
-- To reproduce the analysis first prepare the data using [notebooks/Data Preparation.ipynb](notebooks/Data%20Preparation.ipynb) and then run [notebooks/Demographic Bias Analysis.ipynb](notebooks/Demographic%20Bias%20Analysis.ipynb)
-- To reproduce the plots first run [notebooks/Demographic Bias Plots.ipynb](notebooks/Demographic%20Bias%20Plots.ipynb)
-- If you want to explore how the library behind the dashboard works see [notebooks/Image Crop Analysis.ipynb](notebooks/Image%20Crop%20Analysis.ipynb)
-- If you have the dataset prepared from the above steps then you can create the gender gaze dataset by running [notebooks/Gender Gaze Analysis.ipynb](notebooks/Gender%20Gaze%20Analysis.ipynb)
-
-
-## Docker Run
-
-* Install docker 
-* Run the following commands in this root directory of this project:
+Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/products/individual)
 
 ```bash
-docker build -t "image_crop" -f docker/Dockerfile .
-docker run -p 9000:9000 -p 8900:8900 -it image_crop
+# create a conda environment
+conda env create -f environment.yml
+# activate the environment
+conda activate image-crop-analysis
+
+# download images to `./data`
+python scripts/download.py
+# analyze the data
+python manga_analysis.py
 ```
-* Open the jupyter lab URL shown in terminal. 
 
-## Run on Google Colab
+## Datasets
 
-[![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/twitter-research/image-crop-analysis)
+We analyzed four datasets.
 
+| Name       | #Images | Title (en)            | Title (jp)             | Link                                                                                                  |
+| ---------- | ------- | --------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| Shiny4x250 | 250     | Shinymas Everyday!    | シャニマスえぶりでい！ | [Website](https://shinycolors.idolmaster.jp/comic/)/[Twitter](https://twitter.com/imassc_official)    |
+| Pri4x250   | 250     | Priconne! Re:Dive     | ぷりこねっ！りだいぶ   | [Website](https://comic.priconne-redive.jp/)/[Twitter](https://twitter.com/priconne_redive)           |
+| Girl4x250  | 250     | More! Girls Band Life | もっと！ガルパライフ   | [Website](https://bang-dream.bushimo.jp/special/manga/)/[Twitter](https://twitter.com/bang_dream_gbp) |
+| Negi4x1000 | 1000    | negineesan            | ねぎ姉さん             | [Website](http://negineesan.com/)                                                                     |
 
-* Open a google colab notebook
-* Run the following code in the cell where `HOME_DIR` variable is set:
+All the datasets contain vertical four-frame cartoons.
+Thus, cropping lower frames (high y coordinate) causes spoilers, revealing the ending and punch line of the episode.
 
-```
-try:
-    import google.colab
-    ! pip install pandas scikit-learn scikit-image statsmodels requests dash
-    ! [[ -d image-crop-analysis ]] || git clone https://github.com/twitter-research/image-crop-analysis.git
-    HOME_DIR = Path("./image_crop_analysis").expanduser()
-    IN_COLAB = True
-except:
-    IN_COLAB = False
-```
-* Try the [notebooks/Image Crop Analysis.ipynb](https://github.com/twitter-research/image-crop-analysis/blob/main/notebooks/Image%20Crop%20Analysis.ipynb) notebook for example. 
+We use these datasets for information analysis, which is permitted by the copyright law of Japan.
+Do not use our code to enjoy manga.
+You can read them in the websites and twitter.
 
+## Results
 
-# Security Issues?
+We plotted the histogram of salient points' y coordinate normalized by image height.
 
-Please report sensitive security issues via Twitter's bug-bounty program (https://hackerone.com/twitter) rather than GitHub.
+<img src="results/shiny4/norm_y_hist.png" width="400"/>
+<img src="results/pri4/norm_y_hist.png" width="400"/>
+<img src="results/girl4/norm_y_hist.png" width="400"/>
+<img src="results/negi4/norm_y_hist.png" width="400"/>
+
+Although the thumbnails of four-frame cartoons in websites are typically cropped from the first frame
+(see [Shiny4x250](https://shinycolors.idolmaster.jp/comic/) and [Girl4x250](https://bang-dream.bushimo.jp/special/manga/)),
+Twitter's cropping algorithm is biased towards lower frames.
